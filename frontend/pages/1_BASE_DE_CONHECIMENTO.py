@@ -328,13 +328,6 @@ with col2:
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Informações sobre a base de conhecimento
-st.markdown("---")
-st.markdown("""
-### Sobre a Base de Conhecimento
-
-Apenas arquivos .txt são aceitos atualmente. Os documentos aqui adicionados serão automaticamente incorporados à base usada pelo assistente nos módulos de Chat, FAQ e Quiz.
-""")
 
 # Rodapé com créditos
 st.markdown("""
