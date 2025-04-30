@@ -6,7 +6,8 @@ import random
 from datetime import datetime
 import time
 
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+#API_URL = os.getenv("API_URL", "http://localhost:8000")
+API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 
 # Função para atualizar a base de conhecimento
 def refresh_knowledge_base():
