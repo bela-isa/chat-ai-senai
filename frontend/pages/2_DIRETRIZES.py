@@ -347,6 +347,13 @@ system_components = {
 # Mostrar verificações em tabs - MOVIDO PARA O FINAL DA PÁGINA
 st.markdown("## 🔍 Status de Implementação")
 
+# Adicionar debug para verificações relacionadas ao banco de dados
+st.write("Debug - Status das verificações:")
+st.write(f"- API funcionando: {api_health}")
+st.write(f"- Banco de dados existe: {db_exists}")
+st.write(f"- Verificação da produção: {is_production}")
+st.write(f"- Caminho do banco: ../backend/db/usage.db")
+
 # Separar componentes por categoria
 backend_items = {k: v for k, v in system_components.items() if v['category'] == 'backend'}
 frontend_items = {k: v for k, v in system_components.items() if v['category'] == 'frontend'}
