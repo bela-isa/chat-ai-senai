@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 import time
 
-#API_URL = os.getenv("API_URL", "http://localhost:8000")
+# Usar variável secreta no Streamlit Cloud para endpoint da API
 API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 
 # Configuração da página
@@ -591,6 +591,9 @@ if st.session_state.current_question:
 # Exibir histórico de FAQ
 st.subheader("📋 Histórico de Perguntas e Respostas")
 
+# Debug para verificar o status da lista FAQ
+st.write(f"Debug - Status da lista FAQ: {type(st.session_state.faq_items)} com {len(st.session_state.faq_items) if hasattr(st.session_state, 'faq_items') and st.session_state.faq_items is not None else 0} itens")
+
 # Pesquisa no histórico de FAQ
 with st.expander("🔍 Pesquisar no histórico", expanded=False):
     st.markdown("<div class='search-container'>", unsafe_allow_html=True)
@@ -625,12 +628,7 @@ if st.session_state.history_cleared:
     st.session_state.history_cleared = False  # Resetar o estado de histórico limpo
 elif not st.session_state.faq_items or len(st.session_state.faq_items) == 0:
     st.info("Ainda não há perguntas no histórico. Faça uma pergunta para começar.")
-    # Debug para verificar o estado
-    st.write(f"Debug - Status da lista FAQ: {type(st.session_state.faq_items)} com {len(st.session_state.faq_items) if hasattr(st.session_state.faq_items, '__len__') else 'N/A'} itens")
 else:
-    # Debug para verificar itens no histórico
-    st.write(f"Debug - Histórico FAQ: {len(st.session_state.faq_items)} itens encontrados")
-    
     # Filtrar itens se houver um termo de pesquisa
     faq_items = st.session_state.faq_items.copy()  # Usar cópia para não modificar o original
     
