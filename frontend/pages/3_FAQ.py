@@ -592,7 +592,7 @@ if st.session_state.current_question:
 st.subheader("📋 Histórico de Perguntas e Respostas")
 
 # Debug para verificar o status da lista FAQ
-st.write(f"Debug - Status da lista FAQ: {type(st.session_state.faq_items)} com {len(st.session_state.faq_items) if hasattr(st.session_state, 'faq_items') and st.session_state.faq_items is not None else 0} itens")
+#st.write(f"Debug - Status da lista FAQ: {type(st.session_state.faq_items)} com {len(st.session_state.faq_items) if hasattr(st.session_state, 'faq_items') and st.session_state.faq_items is not None else 0} itens")
 
 # Pesquisa no histórico de FAQ
 with st.expander("🔍 Pesquisar no histórico", expanded=False):
