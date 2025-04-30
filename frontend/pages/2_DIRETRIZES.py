@@ -3,12 +3,14 @@ import streamlit as st
 import requests
 import sqlite3
 from pathlib import Path
+from datetime import datetime
+import time
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 # Configuração da página
 st.set_page_config(
-    page_title="DIRETRIZES",
+    page_title="Diretrizes do Projeto - SENAI",
     page_icon="📋",
     layout="wide"
 )
@@ -84,10 +86,56 @@ st.markdown("""
     margin-bottom: 2rem;
     border-left: 5px solid #4299e1;
 }
+.status-card-ok {
+    background-color: #d4edda;
+    border-left: 5px solid #28a745;
+}
+.status-card-warning {
+    background-color: #fff3cd;
+    border-left: 5px solid #ffc107;
+}
+.status-card-error {
+    background-color: #f8d7da;
+    border-left: 5px solid #dc3545;
+}
+.status-header {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+.status-description {
+    font-size: 0.9rem;
+    color: #333;
+}
+.section-title {
+    font-size: 1.25rem;
+    margin: 1.5rem 0 1rem 0;
+    font-weight: 500;
+    color: #2c3e50;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+}
+.metric-card {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.2rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border-left: 4px solid #4299e1;
+}
+.metric-value {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+.metric-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
-def check_directory_exists(path):
+def check_dir_exists(path):
     """Verifica se um diretório existe"""
     return os.path.exists(path) and os.path.isdir(path)
 
@@ -111,7 +159,7 @@ def check_api_docs():
     except:
         return False
 
-def check_sqlite_db():
+def check_db_exists():
     """Verifica se o banco SQLite está configurado corretamente"""
     try:
         db_path = "../backend/db/usage.db"
@@ -124,146 +172,246 @@ def check_sqlite_db():
     except:
         return False
 
+# Função para obter estatísticas do banco de dados
+def get_db_stats():
+    try:
+        if not check_file_exists("../backend/db/usage.db"):
+            return None
+            
+        # Criar conexão com o banco de dados
+        conn = sqlite3.connect("../backend/db/usage.db")
+        cursor = conn.cursor()
+        
+        # Verificar tabelas disponíveis
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        tables = [t[0] for t in tables]
+        
+        stats = {}
+        
+        # Estatísticas da tabela usage_logs
+        if 'usage_logs' in tables:
+            # Força a atualização completa sem cache, com PRAGMA para evitar cache do SQLite
+            cursor.execute("PRAGMA no_cache = 1")
+            cursor.execute("SELECT COUNT(*) FROM usage_logs")
+            stats['total_questions'] = cursor.fetchone()[0]
+            
+            # Forçar recálculo de tokens com SQL direto e filtro para contar apenas tokens positivos
+            cursor.execute("SELECT SUM(tokens_used) FROM usage_logs WHERE tokens_used > 0")
+            total_tokens = cursor.fetchone()[0]
+            stats['total_tokens'] = total_tokens if total_tokens else 0
+        
+        # Estatísticas da tabela chat_sessions
+        if 'chat_sessions' in tables:
+            cursor.execute("SELECT COUNT(*) FROM chat_sessions")
+            stats['total_chat_sessions'] = cursor.fetchone()[0]
+            
+        # Estatísticas da tabela faq_items
+        if 'faq_items' in tables:
+            cursor.execute("SELECT COUNT(*) FROM faq_items")
+            stats['total_faq_items'] = cursor.fetchone()[0]
+            
+        # Estatísticas da tabela quizzes
+        if 'quizzes' in tables:
+            cursor.execute("SELECT COUNT(*) FROM quizzes")
+            stats['total_quizzes'] = cursor.fetchone()[0]
+        
+        # Estatísticas da tabela quiz_questions
+        if 'quiz_questions' in tables:
+            cursor.execute("SELECT COUNT(*) FROM quiz_questions")
+            stats['total_quiz_questions'] = cursor.fetchone()[0]
+            
+        # Fechar conexão para garantir que as mudanças são persistidas
+        conn.commit()
+        conn.close()
+        return stats
+    except Exception as e:
+        print(f"Erro ao acessar o banco de dados: {str(e)}")
+        return None
+
 # Título e Descrição Principal
-st.title("📋 DIRETRIZES DO PROJETO")
+st.title("📋 Diretrizes do Projeto")
 
 st.markdown("""
-<div class="main-description">
-Este projeto implementa um sistema de perguntas e respostas sobre o SENAI utilizando RAG (Retrieval-Augmented Generation) 
-com embeddings para buscar informações relevantes em documentos. O sistema é dividido em backend (FastAPI) e 
-frontend (Streamlit), seguindo uma arquitetura modular e boas práticas de desenvolvimento.
-</div>
-""", unsafe_allow_html=True)
+Esta página mostra o status de implementação do sistema.
+""")
 
-# Estrutura do Projeto
-backend_path = Path("../backend")
-directories = {
-    "chains": backend_path / "chains",
-    "services": backend_path / "services",
-    "models": backend_path / "models",
-    "db": backend_path / "db"
-}
+# Verificações gerais (sempre forçar atualização)
+api_health = check_api_health()
+db_exists = check_db_exists()
 
-# Contadores
-total_checks = 0
-passed_checks = 0
-
-# Verificações com descrições detalhadas
-checks = {
-    "Backend (FastAPI)": {
-        "description": """
-        O backend deve implementar uma API que responda perguntas usando documentos (RAG com embeddings),
-        com uma estrutura modular bem definida e endpoints documentados.
-        """,
-        "items": {
-            "Módulo /chains": {
-                "status": check_directory_exists(directories["chains"]),
-                "description": "Implementação dos fluxos de chamada de IA para geração de respostas com base em contexto"
-            },
-            "Módulo /services": {
-                "status": check_directory_exists(directories["services"]),
-                "description": "Gerenciamento da comunicação com APIs de terceiros (OpenAI, Gemini)"
-            },
-            "Módulo /models": {
-                "status": check_directory_exists(directories["models"]),
-                "description": "Schemas Pydantic para requisições e respostas da API"
-            },
-            "Banco SQLite": {
-                "status": check_sqlite_db(),
-                "description": "Banco de dados em backend/db/usage.db para registro de prompts, respostas e tokens"
-            },
-            "Health Check": {
-                "status": check_api_health(),
-                "description": "Endpoint /health para verificação de status da API"
-            },
-            "Documentação": {
-                "status": check_api_docs(),
-                "description": "Documentação Swagger disponível em /docs"
-            }
-        }
+# Define um dicionário único e consolidado com todos os componentes do sistema
+system_components = {
+    # Componentes do Backend
+    "Estrutura de Arquivos Backend": {
+        "status": all([
+            check_dir_exists("../backend/models"),
+            check_dir_exists("../backend/services"),
+            check_dir_exists("../backend/chains"),
+            check_dir_exists("../backend/db"),
+            check_file_exists("../backend/.env")
+        ]),
+        "description": "Estrutura modular com diretórios para models, services, chains e banco de dados.",
+        "category": "backend"
     },
-    "Frontend (Streamlit)": {
-        "description": """
-        Interface simples em Streamlit para interação com o usuário, permitindo envio de perguntas
-        e exibição das respostas geradas pela API.
-        """,
-        "items": {
-            "Interface Principal": {
-                "status": True,
-                "description": "Interface para receber perguntas do usuário e mostrar respostas da API"
-            },
-            "Fluxo Frontend➔Backend": {
-                "status": check_api_health(),
-                "description": "Comunicação estabelecida entre frontend e backend para processamento de perguntas"
-            }
-        }
+    "API FastAPI": {
+        "status": api_health,
+        "description": "API REST com endpoints para chat, documentos, FAQ e quiz.",
+        "category": "backend"
     },
-    "Requisitos Gerais": {
-        "description": """
-        Configurações e práticas obrigatórias para o funcionamento e manutenção adequada do projeto.
-        """,
-        "items": {
-            "Python 3.12": {
-                "status": True,
-                "description": "Versão recomendada do Python para o projeto"
-            },
-            "Arquivo .env": {
-                "status": check_file_exists("../backend/.env"),
-                "description": "Gerenciamento de chaves de API e configurações via variáveis de ambiente"
-            },
-            "Versionamento DB": {
-                "status": check_file_exists("../backend/db/usage.db"),
-                "description": "Banco SQLite versionado junto com o repositório"
-            }
-        }
+    "Documentação OpenAPI": {
+        "status": check_api_docs(),
+        "description": "Documentação Swagger disponível em /docs.",
+        "category": "backend"
+    },
+    "Banco SQLite": {
+        "status": db_exists,
+        "description": "Banco de dados para logging de prompts, respostas e tokens.",
+        "category": "backend"
+    },
+    "Routers Implementados": {
+        "status": all([
+            check_file_exists("../backend/routers/chat_router.py"),
+            check_file_exists("../backend/routers/faq_router.py"),
+            check_file_exists("../backend/routers/quiz_router.py")
+        ]),
+        "description": "Endpoints para chat, FAQ e quiz com funcionalidades completas.",
+        "category": "backend"
+    },
+
+    # Componentes do Frontend
+    "Estrutura de Arquivos Frontend": {
+        "status": check_dir_exists("../frontend/pages"),
+        "description": "Arquivos Streamlit organizados em diretório pages para multi-páginas.",
+        "category": "frontend"
+    },
+    "Página Principal (Chat)": {
+        "status": check_file_exists("../frontend/0_CHAT.py"),
+        "description": "Chat interativo com streaming de respostas.",
+        "category": "frontend"
+    },
+    "Base de Conhecimento": {
+        "status": check_file_exists("../frontend/pages/1_BASE_DE_CONHECIMENTO.py"),
+        "description": "Upload e gerenciamento de documentos de referência.",
+        "category": "frontend"
+    },
+    "Perguntas Frequentes (FAQ)": {
+        "status": check_file_exists("../frontend/pages/3_FAQ.py"),
+        "description": "Visualização e geração de FAQ em formato acordeão.",
+        "category": "frontend"
+    },
+    "Quiz Interativo": {
+        "status": check_file_exists("../frontend/pages/4_QUIZ.py"),
+        "description": "Geração de quizzes temáticos com perguntas, alternativas e explicações.",
+        "category": "frontend"
+    },
+
+    # Funcionalidades principais
+    "RAG com Embeddings": {
+        "status": check_file_exists("../backend/chains/qa_chain.py"),
+        "description": "Busca contextual com embeddings para respostas baseadas em documentos.",
+        "category": "feature"
+    },
+    "Chat com Streaming": {
+        "status": check_file_exists("../backend/routers/chat_router.py"),
+        "description": "Respostas de chat entregues em tempo real via SSE (Server-Sent Events).",
+        "category": "feature"
+    },
+    "Geração Dinâmica de FAQ": {
+        "status": check_file_exists("../backend/routers/faq_router.py") and db_exists,
+        "description": "Criação automática de perguntas e respostas relevantes sobre tópicos.",
+        "category": "feature"
+    },
+    "Quiz com Feedback": {
+        "status": check_file_exists("../backend/routers/quiz_router.py") and db_exists,
+        "description": "Quiz interativo com diferentes alternativas e explicações detalhadas.",
+        "category": "feature"
+    },
+    "Persistência de Dados": {
+        "status": db_exists,
+        "description": "Armazenamento persistente de histórico de chat, FAQ e quiz no SQLite.",
+        "category": "feature"
     }
 }
 
-# Exibir status
-cols = st.columns(2)
-col_idx = 0
+# Mostrar verificações em tabs - MOVIDO PARA O FINAL DA PÁGINA
+st.markdown("## 🔍 Status de Implementação")
 
-for section, data in checks.items():
-    with cols[col_idx]:
-        st.markdown(f"### {section}")
-        st.markdown(f"<div class='section-description'>{data['description']}</div>", unsafe_allow_html=True)
-        
-        for item, info in data['items'].items():
-            total_checks += 1
-            if info['status']:
-                passed_checks += 1
-                icon = "✅"
-                status_class = "status-ok"
-            else:
-                icon = "❌"
-                status_class = "status-error"
-            
-            st.markdown(f"""
-            <div class="status-card">
-                <div class="status-header">
-                    <span class="{status_class}">{icon}</span>
-                    {item}
-                </div>
-                <div class="status-content">
-                    {info['description']}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    col_idx = (col_idx + 1) % 2
+# Separar componentes por categoria
+backend_items = {k: v for k, v in system_components.items() if v['category'] == 'backend'}
+frontend_items = {k: v for k, v in system_components.items() if v['category'] == 'frontend'}
+feature_items = {k: v for k, v in system_components.items() if v['category'] == 'feature'}
 
-# Barra de Progresso e Resumo
-st.markdown("---")
-progress = passed_checks / total_checks
+# Calcular métricas de progresso
+total_checks = len(system_components)
+passed_checks = sum(1 for component in system_components.values() if component['status'])
+progress = passed_checks / total_checks if total_checks > 0 else 0
+
+# Exibir progresso geral
 st.progress(progress)
 st.markdown(f"""
 <div class="progress-label">
-    <b>{passed_checks}</b> de <b>{total_checks}</b> requisitos atendidos ({progress*100:.1f}%)<br>
-    Este índice representa a conformidade do projeto com as diretrizes estabelecidas.
+    <b>{passed_checks}</b> de <b>{total_checks}</b> componentes implementados ({progress*100:.1f}%)
 </div>
 """, unsafe_allow_html=True)
 
-# Atualização
-col1, col2, col3 = st.columns([1,1,1])
-with col2:
-    st.button("🔄 Verificar Diretrizes") 
+# Exibir verificações em tabs para melhor organização
+tab1, tab2, tab3 = st.tabs(["Backend", "Frontend", "Funcionalidades"])
+
+with tab1:
+    st.markdown("<div class='section-title'>Componentes do Backend</div>", unsafe_allow_html=True)
+    for check_name, check_info in backend_items.items():
+        status_class = "status-card-ok" if check_info["status"] else "status-card-error"
+        status_text = "✅ Implementado" if check_info["status"] else "❌ Não implementado"
+        
+        st.markdown(f"""
+        <div class="status-card {status_class}">
+            <div class="status-header">{check_name}: {status_text}</div>
+            <div class="status-description">{check_info["description"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+with tab2:
+    st.markdown("<div class='section-title'>Componentes do Frontend</div>", unsafe_allow_html=True)
+    for check_name, check_info in frontend_items.items():
+        status_class = "status-card-ok" if check_info["status"] else "status-card-error"
+        status_text = "✅ Implementado" if check_info["status"] else "❌ Não implementado"
+        
+        st.markdown(f"""
+        <div class="status-card {status_class}">
+            <div class="status-header">{check_name}: {status_text}</div>
+            <div class="status-description">{check_info["description"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+with tab3:
+    st.markdown("<div class='section-title'>Funcionalidades do Sistema</div>", unsafe_allow_html=True)
+    for check_name, check_info in feature_items.items():
+        if isinstance(check_info["status"], bool):
+            status_class = "status-card-ok" if check_info["status"] else "status-card-error"
+            status_text = "✅ Implementado" if check_info["status"] else "❌ Não implementado"
+        else:
+            # Se não for bool, tratar como parcialmente implementado
+            status_class = "status-card-warning"
+            status_text = "⚠️ Parcialmente implementado"
+        
+        st.markdown(f"""
+        <div class="status-card {status_class}">
+            <div class="status-header">{check_name}: {status_text}</div>
+            <div class="status-description">{check_info["description"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# Mostrar timestamp e créditos
+st.markdown("<hr>", unsafe_allow_html=True)
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown(f"<small>Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</small>", unsafe_allow_html=True)
+
+# Rodapé com créditos
+st.markdown("""
+<div style="position: fixed; bottom: 0; right: 0; margin: 15px; font-size: 1rem; opacity: 0.9; text-align: right; background-color: rgba(255,255,255,0.9); padding: 10px; border-radius: 5px; box-shadow: 0 1px 5px rgba(0,0,0,0.1);">
+    Desenvolvido por <strong>Isabela Neves</strong> - Desenvolvedora back-end do SENAI<br>
+    Avaliado por <strong>Josiel Eliseu Borges</strong> - Tech Lead e Desenvolvedor Sênior do SENAI
+</div>
+""", unsafe_allow_html=True) 

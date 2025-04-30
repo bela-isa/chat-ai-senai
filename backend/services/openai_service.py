@@ -1,7 +1,7 @@
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-from typing import List, Tuple
+from typing import List, Tuple, AsyncGenerator
 import httpx
 
 load_dotenv()
@@ -23,6 +23,10 @@ class OpenAIService:
             http_client=http_client,
             timeout=60.0  # Timeout aumentado para documentos grandes
         )
+        
+        # Para o cliente async usado no streaming
+        self.async_client = None
+        
         self.model_name = os.getenv("MODEL_NAME", "gpt-3.5-turbo")
         self.embedding_model = os.getenv("EMBEDDING_MODEL", "text-embedding-ada-002")
     
@@ -54,4 +58,41 @@ class OpenAIService:
             
             return response.choices[0].message.content, response.usage.total_tokens
         except Exception as e:
-            raise Exception(f"Erro ao gerar resposta: {str(e)}") 
+            raise Exception(f"Erro ao gerar resposta: {str(e)}")
+            
+    async def get_streaming_completion(self, prompt: str, context: str = "") -> AsyncGenerator:
+        """Gera uma resposta usando o modelo de chat com streaming"""
+        try:
+            # Lazy-loading do cliente assíncrono
+            if self.async_client is None:
+                from openai import AsyncOpenAI
+                
+                # Configuração do cliente HTTP com proxy se necessário
+                async_http_client = None
+                if os.getenv("HTTPS_PROXY"):
+                    async_http_client = httpx.AsyncClient(proxies={"https": os.getenv("HTTPS_PROXY")})
+                
+                self.async_client = AsyncOpenAI(
+                    api_key=os.getenv("OPENAI_API_KEY"),
+                    http_client=async_http_client,
+                    timeout=60.0
+                )
+            
+            messages = [
+                {"role": "system", "content": "Você é um assistente especializado em responder perguntas sobre o SENAI com precisão e clareza."},
+                {"role": "user", "content": f"Use este contexto para responder à pergunta:\n\nContexto: {context}\n\nPergunta: {prompt}"}
+            ]
+            
+            stream = await self.async_client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=500,
+                stream=True
+            )
+            
+            async for chunk in stream:
+                yield chunk
+                
+        except Exception as e:
+            raise Exception(f"Erro ao gerar resposta em streaming: {str(e)}") 

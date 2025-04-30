@@ -61,7 +61,7 @@ source .venv/bin/activate
 ### 3 – Instalar dependências
 
 ```bash
-pip install -r backend/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 4 – Configurar variáveis de ambiente
@@ -77,12 +77,17 @@ CHAT_MODEL=gpt-4o
 ### 5 – Executar serviços
 
 ```bash
-# Backend
-uvicorn backend.main:app --reload --port 8000
+# Modo simplificado (recomendado)
+python iniciar_aplicacao.py
 
-# Em outro terminal
+# Modo manual (dois terminais)
+# Terminal 1 - Backend
+cd backend
+uvicorn main:app --reload --port 8000
+
+# Terminal 2 - Frontend
 cd frontend
-streamlit run app.py
+streamlit run 0_CHAT.py
 ```
 
 - **Docs da API**: http://localhost:8000/docs  
@@ -94,26 +99,34 @@ streamlit run app.py
 
 ### Funcionalidades implementadas
 
-- Sistema de RAG (Retrieval-Augmented Generation) completo utilizando embeddings para busca contextual
-- Interface amigável em Streamlit com:
-  - Chat principal com sugestões de perguntas
-  - Base de Conhecimento para upload e visualização de documentos
-  - Página de Diretrizes com monitoramento do projeto
-- Backend robusto com:
-  - Endpoints documentados via Swagger
+- **Sistema de RAG completo**: Implementação de retrieval-augmented generation com embeddings para respostas contextuais precisas
+- **Interface Streamlit completa**:
+  - Chat principal com sugestões e streaming de respostas
+  - Base de Conhecimento para upload e gestão de documentos
+  - FAQ dinâmico com histórico persistente
+  - Quiz interativo com feedback detalhado
+  - Diretrizes para monitorar a implementação do sistema
+- **Backend robusto**:
+  - API REST com endpoints documentados via Swagger
   - Logging de prompts, respostas e tokens em SQLite
   - Estrutura modular (chains, services, models)
   - Tratamento de erros e validações
-- Integração com OpenAI API para embeddings e chat completion
-- Sistema de armazenamento e recuperação de documentos
-- Monitoramento de saúde do sistema (health checks)
+- **Persistência de dados**:
+  - Histórico de FAQ salvo no banco de dados
+  - Sessões de chat rastreáveis
+  - Upload e armazenamento de documentos
+- **Melhorias de UX**:
+  - Design responsivo e informações de autoria em todas as páginas
+  - Feedback visual durante operações
+  - Tratamento de erros amigável
 
-### Funcionalidades não implementadas / pendências
+### Correções/melhorias implementadas
 
-- Testes unitários e de integração
-- Validação de tipos de arquivo além de .txt na Base de Conhecimento
-- Sistema de autenticação e controle de acesso
-- Otimização do processamento de embeddings para grandes volumes de documentos
+- Corrigido erro que impedia a atualização do histórico do FAQ
+- Corrigido problemas de persistência no histórico do FAQ após reinicialização
+- Melhorado o rodapé com informações de autoria em todas as páginas
+- Otimizado o armazenamento e recuperação de perguntas e respostas
+- Adicionado .gitignore adequado para arquivos temporários e de configuração
 
 ### Novas bibliotecas adicionadas
 

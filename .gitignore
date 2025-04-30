@@ -1,2 +1,23 @@
-.venv
+# Ignorar pastas de cache
+__pycache__/
+.pytest_cache/
+*/__pycache__/
+*/.pytest_cache/
+**/__pycache__/
+**/.pytest_cache/
+
+# Arquivos de inicialização
+iniciar_aplicacao.bat
+iniciar_aplicacao.py
+instalar_dependencias.bat
+
+# Arquivos de ambiente
 .env
+*.pyc
+
+# Logs
+*.log
+
+# Arquivos temporários
+.tmp/
+.temp/
