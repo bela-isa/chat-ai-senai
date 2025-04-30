@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
-from models.schemas import FAQItem, FAQCreateRequest
+from models.schemas import FAQItem, FAQCreateRequest, FAQAddRequest
 from db.database import get_db, FAQ
 from services.openai_service import OpenAIService
 from chains.qa_chain import QAChain
@@ -179,6 +179,34 @@ async def delete_all_faq_items(db: Session = Depends(get_db)):
         db.commit()
         
         return {"message": f"Todos os {count} itens do FAQ foram removidos com sucesso"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/faq/item", response_model=FAQItem)
+async def add_faq_item(request: FAQAddRequest, db: Session = Depends(get_db)):
+    """Adiciona um item ao FAQ manualmente"""
+    try:
+        # Criar o item no banco de dados
+        db_item = FAQ(
+            question=request.question,
+            answer=request.answer,
+            source=request.source if request.source else "",
+            created_at=datetime.utcnow()
+        )
+        
+        db.add(db_item)
+        db.commit()
+        db.refresh(db_item)
+        
+        # Retornar o item criado
+        return FAQItem(
+            id=db_item.id,
+            question=db_item.question,
+            answer=db_item.answer,
+            source=db_item.source,
+            created_at=db_item.created_at
+        )
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e)) 
