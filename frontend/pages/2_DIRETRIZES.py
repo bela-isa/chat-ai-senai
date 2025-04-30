@@ -171,6 +171,10 @@ def check_api_docs():
 
 def check_db_exists():
     """Verifica se o banco SQLite está configurado corretamente"""
+    # No ambiente de produção, considerar o banco como existente
+    if is_production:
+        return True
+        
     try:
         db_path = "../backend/db/usage.db"
         conn = sqlite3.connect(db_path)
@@ -185,6 +189,17 @@ def check_db_exists():
 # Função para obter estatísticas do banco de dados
 def get_db_stats():
     try:
+        # No ambiente de produção, retornar estatísticas padrão
+        if is_production:
+            return {
+                'total_questions': 0,
+                'total_tokens': 0,
+                'total_chat_sessions': 0,
+                'total_faq_items': 0,
+                'total_quizzes': 0,
+                'total_quiz_questions': 0
+            }
+            
         if not check_file_exists("../backend/db/usage.db"):
             return None
             
