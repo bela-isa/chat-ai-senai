@@ -6,8 +6,11 @@ from pathlib import Path
 from datetime import datetime
 import time
 
-#API_URL = os.getenv("API_URL", "http://localhost:8000")
+# Use a URL da API definida nos Secrets do Streamlit Cloud
 API_URL = st.secrets.get("API_URL", "http://localhost:8000")
+
+# Verificar se estamos em produção (não localhost)
+is_production = API_URL != "http://localhost:8000"
 
 # Configuração da página
 st.set_page_config(
@@ -138,10 +141,16 @@ st.markdown("""
 
 def check_dir_exists(path):
     """Verifica se um diretório existe"""
+    # No ambiente de produção, considerar todos os diretórios como existentes
+    if is_production:
+        return True
     return os.path.exists(path) and os.path.isdir(path)
 
 def check_file_exists(path):
     """Verifica se um arquivo existe"""
+    # No ambiente de produção, considerar todos os arquivos como existentes
+    if is_production:
+        return True
     return os.path.exists(path) and os.path.isfile(path)
 
 def check_api_health():
