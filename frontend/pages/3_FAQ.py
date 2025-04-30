@@ -5,7 +5,8 @@ import json
 from datetime import datetime
 import time
 
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+#API_URL = os.getenv("API_URL", "http://localhost:8000")
+API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 
 # Configuração da página
 st.set_page_config(
